@@ -7,15 +7,20 @@ from api_fhir.configurations import Stu3IdentifierConfig, Stu3ClaimConfig
 from api_fhir.converters import BaseFHIRConverter, LocationConverter, PatientConverter, PractitionerConverter, \
     ReferenceConverterMixin
 from api_fhir.models import Claim as FHIRClaim, ClaimItem as FHIRClaimItem, Period, ClaimDiagnosis, Money, \
-    ImisClaimIcdTypes, ClaimInformation, Quantity
-from api_fhir.utils import TimeUtils, FhirUtils, DbManagerUtils
+    ImisClaimIcdTypes, ClaimInformation, Quantity,Extension
 
+from api_fhir.utils import TimeUtils, FhirUtils, DbManagerUtils
+from claim.models import SSFScheme
 
 class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
-
+    claim_uuid=""
     @classmethod
     def to_fhir_obj(cls, imis_claim):
         fhir_claim = FHIRClaim()
+        claim_uuid= imis_claim.uuid
+        print (claim_uuid)
+        fhir_claim.extension = []
+        fhir_claim.extension.append(cls.getSchemeInformation(imis_claim.scheme_type))
         cls.build_fhir_pk(fhir_claim, imis_claim.uuid)
         fhir_claim.created = imis_claim.date_claimed.isoformat()
         fhir_claim.facility = LocationConverter.build_fhir_resource_reference(imis_claim.health_facility)
@@ -30,6 +35,18 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         cls.build_fhir_items(fhir_claim, imis_claim)
         return fhir_claim
 
+    def getSchemeInformation(schid):
+        sorex =  list(SSFScheme.objects.filter(id = schid))
+        print (len(sorex))
+        print (schid)
+        print("********************")
+        extension = Extension()
+        extension.url = "scheme"
+        if len(sorex) > 0:
+            extension.valueString = sorex[0].SCH_NAME_ENG
+        else:
+            extension.valueString = "None"
+        return extension
     @classmethod
     def to_imis_obj(cls, fhir_claim, audit_user_id):
         errors = []
