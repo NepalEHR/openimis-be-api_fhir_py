@@ -14,6 +14,7 @@ from medical import models as medical_models
 from policy import models as policy_models
 from product import models as product_models
 
+
 class ClaimAdmin(core_models.VersionedModel):
     id = models.AutoField(db_column='ClaimAdminId', primary_key=True)
     uuid = models.CharField(db_column='ClaimAdminUUID', max_length=36, default=uuid.uuid4, unique=True)
@@ -93,7 +94,7 @@ class Feedback(core_models.VersionedModel):
 signal_claim_rejection = dispatch.Signal(providing_args=["claim"])
 
 
-class Claim(core_models.VersionedModel, core_models.ExtendableModel):
+class Claim(core_models.VersionedModel):
     id = models.AutoField(db_column='ClaimID', primary_key=True)
     uuid = models.CharField(db_column='ClaimUUID',
                             max_length=36, default=uuid.uuid4, unique=True)
@@ -133,13 +134,13 @@ class Claim(core_models.VersionedModel, core_models.ExtendableModel):
     explanation = models.TextField(
         db_column='Explanation', blank=True, null=True)
     feedback_status = models.SmallIntegerField(
-        db_column='FeedbackStatus', blank=True, null=True, default=1)
+        db_column='FeedbackStatus', blank=True, null=True)
     review_status = models.SmallIntegerField(
-        db_column='ReviewStatus', blank=True, null=True, default=1)
+        db_column='ReviewStatus', blank=True, null=True)
     approval_status = models.SmallIntegerField(
-        db_column='ApprovalStatus', blank=True, null=True, default=1)
+        db_column='ApprovalStatus', blank=True, null=True)
     rejection_reason = models.SmallIntegerField(
-        db_column='RejectionReason', blank=True, null=True, default=0)
+        db_column='RejectionReason', blank=True, null=True)
 
     batch_run = models.ForeignKey(claim_batch_models.BatchRun,
                                   models.DO_NOTHING, db_column='RunID', blank=True, null=True)
