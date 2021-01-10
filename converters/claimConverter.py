@@ -20,6 +20,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         claim_uuid= imis_claim.uuid
         print (claim_uuid)
         fhir_claim.extension = []
+        print(imis_claim.scheme_type)
         fhir_claim.extension.append(cls.getSchemeInformation(imis_claim.scheme_type))
         cls.build_fhir_pk(fhir_claim, imis_claim.uuid)
         fhir_claim.created = imis_claim.date_claimed.isoformat()
@@ -38,7 +39,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
     def getSchemeInformation(schid):
         sorex =  list(SSFScheme.objects.filter(id = schid))
         print (len(sorex))
-        print (schid)
+        # print (schid)
         print("********************")
         extension = Extension()
         extension.url = "scheme"

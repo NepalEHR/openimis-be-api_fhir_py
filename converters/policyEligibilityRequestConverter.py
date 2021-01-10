@@ -7,10 +7,11 @@ from api_fhir.models import EligibilityResponse as FHIREligibilityResponse, Insu
     Identifier,Extension
 
 import urllib.request, json 
-
+import os
 
 class PolicyEligibilityRequestConverter(BaseFHIRConverter):
     current_id=""
+    
     @classmethod
     def to_fhir_obj(cls, eligibility_response):
         fhir_response = FHIREligibilityResponse()
@@ -41,8 +42,9 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
         fhir_response.insurance.append(result)
 
     def checkPolicyStatus(cls):
+        print(os.environ.get('sosys_url'))
         sosys_status =False
-        sosys_url = "https://sudishrestha.com.np/sosys_status_check.json"
+        sosys_url = os.environ.get('sosys_url')
         with urllib.request.urlopen(sosys_url) as url:
             data = json.loads(url.read().decode())
             print(data["ResponseData"][0]["Status"]) 

@@ -5,7 +5,7 @@ from api_fhir.converters import BaseFHIRConverter, PatientConverter
 from api_fhir.models import EligibilityResponse as FHIREligibilityResponse, InsuranceBenefitBalance, \
     EligibilityResponseInsurance, InsuranceBenefitBalanceFinancial, Money
 
-
+import os
 class EligibilityRequestConverter(BaseFHIRConverter):
 
     @classmethod
