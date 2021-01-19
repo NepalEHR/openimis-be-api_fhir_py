@@ -56,6 +56,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         cls.build_imis_health_facility(errors, fhir_claim, imis_claim)
         cls.build_imis_identifier(imis_claim, fhir_claim, errors)
         cls.build_imis_patient(imis_claim, fhir_claim, errors)
+        cls.build_imis_schema_identifier(imis_claim, fhir_claim, errors)
         cls.build_imis_date_range(imis_claim, fhir_claim, errors)
         cls.build_imis_diagnoses(imis_claim, fhir_claim, errors)
         cls.build_imis_total_claimed(imis_claim, fhir_claim, errors)
@@ -101,6 +102,13 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         if value:
             imis_claim.code = value
         cls.valid_condition(imis_claim.code is None, gettext('Missing the claim code'), errors)
+
+    @classmethod
+    def build_imis_schema_identifier(cls, imis_claim, fhir_claim, errors):
+        value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_schema_code_type())
+        if value:
+            imis_claim.scheme_type = value
+        cls.valid_condition(imis_claim.scheme_type is None, gettext('Missing the Schema code'), errors)
 
     @classmethod
     def build_imis_patient(cls, imis_claim, fhir_claim, errors):
