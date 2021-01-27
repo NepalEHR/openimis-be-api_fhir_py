@@ -11,7 +11,8 @@ from api_fhir.models import Claim as FHIRClaim, ClaimItem as FHIRClaimItem, Peri
 
 from api_fhir.utils import TimeUtils, FhirUtils, DbManagerUtils
 from claim.models import SSFScheme
-
+import datetime
+from django.db import connection
 class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
     claim_uuid=""
     @classmethod
@@ -40,7 +41,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         sorex =  list(SSFScheme.objects.filter(id = schid))
         print (len(sorex))
         # print (schid)
-        print("********************")
+        # print("********************")
         extension = Extension()
         extension.url = "scheme"
         if len(sorex) > 0:
@@ -54,7 +55,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         imis_claim = Claim()
         cls.build_imis_date_claimed(imis_claim, fhir_claim, errors)
         cls.build_imis_health_facility(errors, fhir_claim, imis_claim)
-        cls.build_imis_identifier(imis_claim, fhir_claim, errors)
+        # cls.build_imis_identifier(imis_claim, fhir_claim, errors)
         cls.build_imis_patient(imis_claim, fhir_claim, errors)
         cls.build_imis_schema_identifier(imis_claim, fhir_claim, errors)
         cls.build_imis_date_range(imis_claim, fhir_claim, errors)
@@ -100,9 +101,28 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
     def build_imis_identifier(cls, imis_claim, fhir_claim, errors):
         value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_claim_code_type())
         if value:
-            imis_claim.code = value
+            imis_claim.code = cls.generateCode(value)
+            # imis_claim.code = value
+            # print(value)
+            # print(imis_claim.code)
         cls.valid_condition(imis_claim.code is None, gettext('Missing the claim code'), errors)
 
+    def generateCode(claimCodeInitials):
+        code= None
+        sql = """\
+                DECLARE @return_value int;
+                EXEC @return_value = [dbo].[uspClaimSequenceNo] @claimcodeinitials = '""" +claimCodeInitials +"""' ;      
+                SELECT	'Return Value' = @return_value;
+            """
+        # print(sql)
+        with connection.cursor() as cur:
+            try:
+                cur.execute(sql)
+                result_set = cur.fetchone()[0]
+                code = claimCodeInitials + str("{:07d}".format(result_set))+"01C"
+            finally:
+                cur.close()
+        return code
     @classmethod
     def build_imis_schema_identifier(cls, imis_claim, fhir_claim, errors):
         value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_schema_code_type())
@@ -126,6 +146,11 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
             if health_facility:
                 imis_claim.health_facility = health_facility
                 imis_claim.health_facility_code = health_facility.code
+                currentYear = datetime.datetime.now()
+                code_value= "I"+str(health_facility.code)+str(currentYear.year)[1:]
+                claim_code=cls.generateCode(code_value)
+                print(claim_code)
+                imis_claim.code = claim_code
         cls.valid_condition(imis_claim.health_facility is None, gettext('Missing the facility reference'), errors)
 
     @classmethod
