@@ -125,7 +125,14 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         return code
     @classmethod
     def build_imis_schema_identifier(cls, imis_claim, fhir_claim, errors):
-        value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_schema_code_type())
+        value = None
+        if fhir_claim.extension:
+            for x in fhir_claim.extension:
+                if x.url == "schemeType":
+                    value = x.valueString
+        #     print(fhir_claim.extension[0].valueString)
+        # value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_schema_code_type())
+        print(value)
         if value:
             imis_claim.scheme_type = value
         cls.valid_condition(imis_claim.scheme_type is None, gettext('Missing the Schema code'), errors)
