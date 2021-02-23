@@ -184,6 +184,10 @@ class AttachmentInputType(Attachment, OpenIMISMutation.Input):
     claim_uuid = graphene.String(required=True)
 
 
+class ClaimCodeGeneratorInputType(OpenIMISMutation.Input):
+    coded_value = graphene.String(required=True)
+
+
 class ClaimInputType(OpenIMISMutation.Input):
     id = graphene.Int(required=False, read_only=True)
     uuid = graphene.String(required=False)
@@ -201,6 +205,7 @@ class ClaimInputType(OpenIMISMutation.Input):
     date_processed = graphene.Date(required=False)
     health_facility_id = graphene.Int(required=True)
     batch_run_id = graphene.Int(required=False)
+    scheme_type = graphene.Int(required=False)
     category = graphene.String(max_length=1, required=False)
     visit_type = graphene.String(max_length=1, required=False)
     admin_id = graphene.Int(required=False)
@@ -355,6 +360,64 @@ def update_or_create_claim(data, user):
     return claim
 
 
+class CreateClaimCodeMutation(OpenIMISMutation):
+    """
+    Create a new claim. The claim items and services can all be entered with this call
+    """
+    _mutation_module = "claim"
+    _mutation_class = "CreateClaimCodeMutation"
+    generated_coded_value = graphene.String(required=True)
+    hospital_code = graphene.String(required=True)
+
+    class Input(ClaimCodeGeneratorInputType):
+        pass
+    
+    @classmethod
+    def mutate(cls, root, info, input):
+        def on_resolve(payload):
+            try:
+                payload.client_mutation_id = input.get("client_mutation_id")
+                payload.hospital_code = input.get("coded_value")
+                payload.generated_coded_value =cls.callSP(cls,input.get("coded_value")) 
+
+            except Exception as ex:
+                raise Exception(
+                    (str(ex)+"Cannot set client_mutation_id in the payload object {}").format(
+                        repr(payload) 
+                    )
+                )
+            return payload
+        from graphene.utils.thenables import maybe_thenable
+        result = cls.mutate_and_get_payload(root, info, **input)
+        return maybe_thenable(result, on_resolve)
+    
+    def callSP(cls,hosCode):
+        import datetime
+        currentYear = datetime.datetime.now()
+        code_value= "I"+str(hosCode)+str(currentYear.year)[1:]
+        claim_code=cls.generateCode(code_value)
+        return claim_code
+        # else:
+        #     return  "error"
+        
+    def generateCode(claimCodeInitials):
+        code= None
+        from django.db import connection
+        sql = """\
+                DECLARE @return_value int;
+                EXEC @return_value = [dbo].[uspClaimSequenceNo] @claimcodeinitials = '""" +claimCodeInitials +"""' ;      
+                SELECT	'Return Value' = @return_value;
+            """
+        # print(sql)
+        with connection.cursor() as cur:
+            try:
+                cur.execute(sql)
+                result_set = cur.fetchone()[0]
+                code = claimCodeInitials + str("{:07d}".format(result_set))+"01C"
+            finally:
+                cur.close()
+        return code
+    
 class CreateClaimMutation(OpenIMISMutation):
     """
     Create a new claim. The claim items and services can all be entered with this call
