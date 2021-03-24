@@ -79,8 +79,11 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
             output =str(res.decode())
         except Exception as e:
             return False
-        policyValid =json.loads(str(output))["IsValid"]
-        return policyValid
+        policyValid =json.loads(str(output))["ResponseData"][0]["status"]
+        if policyValid.lower() == 'active':
+            return True
+        else:
+            return False
 
     @classmethod
     def build_fhir_insurance_contract(cls, insurance, contract):
