@@ -19,9 +19,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
     def to_fhir_obj(cls, imis_claim):
         fhir_claim = FHIRClaim()
         claim_uuid= imis_claim.uuid
-        print (claim_uuid)
         fhir_claim.extension = []
-        print(imis_claim.scheme_type)
         fhir_claim.extension.append(cls.getSchemeInformation(imis_claim.scheme_type))
         cls.build_fhir_pk(fhir_claim, imis_claim.uuid)
         fhir_claim.created = imis_claim.date_claimed.isoformat()

@@ -1,2 +1,6 @@
 replace the models.py in  Lib\site-packages\claim
-add sosys_url=https://sudishrestha.com.np/sosys_status_check.json to env file of backend 
+add following variable to env file of backend 
+sosys_url=http://103.232.152.89:802
+sosy_userid=ssfgiz
+sosys_password=ssfgiz1
+sosys_wstype=health

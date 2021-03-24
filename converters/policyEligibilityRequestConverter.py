@@ -8,7 +8,7 @@ from api_fhir.models import EligibilityResponse as FHIREligibilityResponse, Insu
 
 import urllib.request, json 
 import os
-
+import json
 class PolicyEligibilityRequestConverter(BaseFHIRConverter):
     current_id=""
     
@@ -41,17 +41,46 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
                                      response.ded)
         fhir_response.insurance.append(result)
 
+    def getSosysToken(cls):
+        auth_url = os.environ.get('sosys_url')+ str("/api/auth/login")
+        print(auth_url)
+        data ={
+				"UserId":os.environ.get('sosy_userid'),
+				"Password":os.environ.get('sosys_password'),
+				"wsType":os.environ.get('sosys_wstype')
+		}
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        data = json.dumps(data).encode("utf-8")
+        output=""
+        try:
+            req = urllib.request.Request(auth_url, data, headers)
+            with urllib.request.urlopen(req) as f:
+                res = f.read()
+            output =str(res.decode())
+        except Exception as e:
+            print(e)
+        token_arr=json.loads(str(output))
+        return token_arr["token"]
+
     def checkPolicyStatus(cls):
-        print(os.environ.get('sosys_url'))
-        sosys_status =False
-        sosys_url = os.environ.get('sosys_url')
-        with urllib.request.urlopen(sosys_url) as url:
-            data = json.loads(url.read().decode())
-            print(data["ResponseData"][0]["Status"]) 
-            if "Active" == data["ResponseData"][0]["Status"]:
-                sosys_status =True
-        print(cls.current_id)
-        return sosys_status
+        sosys_token = cls.getSosysToken(cls)
+        print(sosys_token)
+        sosys_url = str(os.environ.get('sosys_url'))+ str("/api/health/GetContributorStatusFhir/")+str(cls.current_id)
+        print (sosys_url)
+        output=""
+        try:
+            req = urllib.request.Request(sosys_url)
+            req.add_header("Authorization","Bearer " +str(sosys_token))
+            with urllib.request.urlopen(req) as f:
+                res = f.read()
+            output =str(res.decode())
+        except Exception as e:
+            return False
+        policyValid =json.loads(str(output))["IsValid"]
+        return policyValid
 
     @classmethod
     def build_fhir_insurance_contract(cls, insurance, contract):
