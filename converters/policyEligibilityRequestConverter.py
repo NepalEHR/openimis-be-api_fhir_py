@@ -30,11 +30,7 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
     def build_fhir_insurance(cls, fhir_response, response):
         result = EligibilityResponseInsurance()
         result.extension = []
-        extension = Extension()
-        extension.url = "policyStatus"
-        extension.valueBoolean = cls.checkPolicyStatus(cls)
-        result.extension.append(extension)
-        #cls.build_fhir_insurance_contract(result, response)
+        cls.checkPolicyStatus(cls,result.extension)
         cls.build_fhir_insurance_contract(result, response)
         cls.build_fhir_money_benefit(result, Config.get_fhir_balance_code(),
                                      response.ceiling,
@@ -65,7 +61,8 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
         token_arr=json.loads(str(output))
         return token_arr["token"]
 
-    def checkPolicyStatus(cls):
+    def checkPolicyStatus(cls,Mextension):
+        cls.current_id = '20760000085'
         sosys_token = cls.getSosysToken(cls)
         print(sosys_token)
         sosys_url = str(os.environ.get('sosys_url'))+ str("/api/health/GetContributorStatusFhir/")+str(cls.current_id)
@@ -79,11 +76,17 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
             output =str(res.decode())
         except Exception as e:
             return False
-        policyValid =json.loads(str(output))["ResponseData"][0]["status"]
-        if policyValid.lower() == 'active':
-            return True
-        else:
-            return False
+        resJson = json.loads(str(output))
+        for resp in resJson["ResponseData"]:
+            extension = Extension()
+            extension.url = resp['class'][0]['value']
+            policyValid =resp["status"]
+            if policyValid.lower() == 'active':
+                extension.valueBoolean = True
+            else:
+                extension.valueBoolean = False
+            Mextension.append(extension)
+        # return Mextension
 
     @classmethod
     def build_fhir_insurance_contract(cls, insurance, contract):
