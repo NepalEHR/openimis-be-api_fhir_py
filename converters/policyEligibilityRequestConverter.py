@@ -62,7 +62,6 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
         return token_arr["token"]
 
     def checkPolicyStatus(cls,Mextension):
-        cls.current_id = '20760000085'
         sosys_token = cls.getSosysToken(cls)
         print(sosys_token)
         sosys_url = str(os.environ.get('sosys_url'))+ str("/api/health/GetContributorStatusFhir/")+str(cls.current_id)
