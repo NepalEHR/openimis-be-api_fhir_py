@@ -10,7 +10,7 @@ from api_fhir.models import Claim as FHIRClaim, ClaimItem as FHIRClaimItem, Peri
     ImisClaimIcdTypes, ClaimInformation, Quantity,Extension
 
 from api_fhir.utils import TimeUtils, FhirUtils, DbManagerUtils
-from claim.models import SSFScheme
+from claim.models import SosysSubProduct 
 import datetime
 from django.db import connection
 class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
@@ -36,14 +36,14 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         return fhir_claim
 
     def getSchemeInformation(schid):
-        sorex =  list(SSFScheme.objects.filter(id = schid))
+        sorex =  list(SosysSubProduct.objects.filter(id = schid))
         print (len(sorex))
         # print (schid)
         # print("********************")
         extension = Extension()
         extension.url = "scheme"
         if len(sorex) > 0:
-            extension.valueString = sorex[0].SCH_NAME_ENG
+            extension.valueString = sorex[0].sch_name_eng
         else:
             extension.valueString = "None"
         return extension
