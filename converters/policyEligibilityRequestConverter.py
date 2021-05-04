@@ -30,63 +30,13 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
     def build_fhir_insurance(cls, fhir_response, response):
         result = EligibilityResponseInsurance()
         result.extension = []
-        cls.checkPolicyStatus(cls,result.extension)
         cls.build_fhir_insurance_contract(result, response)
         cls.build_fhir_money_benefit(result, Config.get_fhir_balance_code(),
                                      response.ceiling,
                                      response.ded)
         fhir_response.insurance.append(result)
 
-    def getSosysToken(cls):
-        auth_url = os.environ.get('sosys_url')+ str("/api/auth/login")
-        print(auth_url)
-        data ={
-				"UserId":os.environ.get('sosy_userid'),
-				"Password":os.environ.get('sosys_password'),
-				"wsType":os.environ.get('sosys_wstype')
-		}
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        data = json.dumps(data).encode("utf-8")
-        output=""
-        try:
-            req = urllib.request.Request(auth_url, data, headers)
-            with urllib.request.urlopen(req) as f:
-                res = f.read()
-            output =str(res.decode())
-        except Exception as e:
-            print(e)
-        token_arr=json.loads(str(output))
-        return token_arr["token"]
-
-    def checkPolicyStatus(cls,Mextension):
-        sosys_token = cls.getSosysToken(cls)
-        print(sosys_token)
-        sosys_url = str(os.environ.get('sosys_url'))+ str("/api/health/GetContributorStatusFhir/")+str(cls.current_id)
-        print (sosys_url)
-        output=""
-        try:
-            req = urllib.request.Request(sosys_url)
-            req.add_header("Authorization","Bearer " +str(sosys_token))
-            with urllib.request.urlopen(req) as f:
-                res = f.read()
-            output =str(res.decode())
-        except Exception as e:
-            return False
-        resJson = json.loads(str(output))
-        for resp in resJson["ResponseData"]:
-            extension = Extension()
-            extension.url = resp['class'][0]['value']
-            policyValid =resp["status"]
-            if policyValid.lower() == 'active':
-                extension.valueBoolean = True
-            else:
-                extension.valueBoolean = False
-            Mextension.append(extension)
-        # return Mextension
-
+    
     @classmethod
     def build_fhir_insurance_contract(cls, insurance, contract):
         insurance.contract = ContractConverter.build_fhir_resource_reference(

@@ -10,17 +10,14 @@ from api_fhir.models import Claim as FHIRClaim, ClaimItem as FHIRClaimItem, Peri
     ImisClaimIcdTypes, ClaimInformation, Quantity,Extension
 
 from api_fhir.utils import TimeUtils, FhirUtils, DbManagerUtils
-from claim.models import SosysSubProduct 
 import datetime
-from django.db import connection
+from django.db import connection, close_old_connections
 class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
     claim_uuid=""
     @classmethod
     def to_fhir_obj(cls, imis_claim):
         fhir_claim = FHIRClaim()
         claim_uuid= imis_claim.uuid
-        fhir_claim.extension = []
-        fhir_claim.extension.append(cls.getSchemeInformation(imis_claim.scheme_type))
         cls.build_fhir_pk(fhir_claim, imis_claim.uuid)
         fhir_claim.created = imis_claim.date_claimed.isoformat()
         fhir_claim.facility = LocationConverter.build_fhir_resource_reference(imis_claim.health_facility)
@@ -35,27 +32,14 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         cls.build_fhir_items(fhir_claim, imis_claim)
         return fhir_claim
 
-    def getSchemeInformation(schid):
-        sorex =  list(SosysSubProduct.objects.filter(id = schid))
-        print (len(sorex))
-        # print (schid)
-        # print("********************")
-        extension = Extension()
-        extension.url = "scheme"
-        if len(sorex) > 0:
-            extension.valueString = sorex[0].sch_name_eng
-        else:
-            extension.valueString = "None"
-        return extension
     @classmethod
     def to_imis_obj(cls, fhir_claim, audit_user_id):
         errors = []
         imis_claim = Claim()
         cls.build_imis_date_claimed(imis_claim, fhir_claim, errors)
         cls.build_imis_health_facility(errors, fhir_claim, imis_claim)
-        # cls.build_imis_identifier(imis_claim, fhir_claim, errors)
         cls.build_imis_patient(imis_claim, fhir_claim, errors)
-        cls.build_imis_schema_identifier(imis_claim, fhir_claim, errors)
+        cls.build_imis_identifier(imis_claim, fhir_claim, errors)
         cls.build_imis_date_range(imis_claim, fhir_claim, errors)
         cls.build_imis_diagnoses(imis_claim, fhir_claim, errors)
         cls.build_imis_total_claimed(imis_claim, fhir_claim, errors)
@@ -97,7 +81,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
 
     @classmethod
     def build_imis_identifier(cls, imis_claim, fhir_claim, errors):
-        value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_claim_code_type())
+        value = '78'
         if value:
             imis_claim.code = cls.generateCode(value)
             # imis_claim.code = value
@@ -109,7 +93,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         code= None
         sql = """\
                 DECLARE @return_value int;
-                EXEC @return_value = [dbo].[uspClaimSequenceNo] @claimcodeinitials = '""" +claimCodeInitials +"""' ;      
+                EXEC @return_value = [dbo].[uspGenerateClaimCode] @currentYear = '""" +claimCodeInitials +"""' ;      
                 SELECT	'Return Value' = @return_value;
             """
         # print(sql)
@@ -117,23 +101,12 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
             try:
                 cur.execute(sql)
                 result_set = cur.fetchone()[0]
-                code = claimCodeInitials + str("{:07d}".format(result_set))+"01C"
+                code = claimCodeInitials + str("{:08d}".format(result_set))
+                print(code)
             finally:
-                cur.close()
+                cur.close()    
+        connection.close()
         return code
-    @classmethod
-    def build_imis_schema_identifier(cls, imis_claim, fhir_claim, errors):
-        value = None
-        if fhir_claim.extension:
-            for x in fhir_claim.extension:
-                if x.url == "schemeType":
-                    value = x.valueString
-        #     print(fhir_claim.extension[0].valueString)
-        # value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_schema_code_type())
-        print(value)
-        if value:
-            imis_claim.scheme_type = value
-        cls.valid_condition(imis_claim.scheme_type is None, gettext('Missing the Schema code'), errors)
 
     @classmethod
     def build_imis_patient(cls, imis_claim, fhir_claim, errors):
