@@ -30,7 +30,10 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
     def build_fhir_insurance(cls, fhir_response, response):
         result = EligibilityResponseInsurance()
         result.extension = []
-        cls.checkPolicyStatus(cls,result.extension)
+        extension = Extension()
+        extension.url = "sosys_policy"
+        extension.valueBoolean = cls.checkPolicyStatus(cls,extension)
+        result.extension.append(extension)
         cls.build_fhir_insurance_contract(result, response)
         cls.build_fhir_money_benefit(result, Config.get_fhir_balance_code(),
                                      response.ceiling,
@@ -39,7 +42,6 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
 
     def getSosysToken(cls):
         auth_url = os.environ.get('sosys_url')+ str("/api/auth/login")
-        print(auth_url)
         data ={
 				"UserId":os.environ.get('sosy_userid'),
 				"Password":os.environ.get('sosys_password'),
@@ -63,9 +65,7 @@ class PolicyEligibilityRequestConverter(BaseFHIRConverter):
 
     def checkPolicyStatus(cls,Mextension):
         sosys_token = cls.getSosysToken(cls)
-        print(sosys_token)
         sosys_url = str(os.environ.get('sosys_url'))+ str("/api/health/GetContributorStatusFhir/")+str(cls.current_id)
-        print (sosys_url)
         output=""
         try:
             req = urllib.request.Request(sosys_url)

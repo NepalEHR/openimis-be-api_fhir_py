@@ -1,4 +1,4 @@
-from claim.models import Feedback, ClaimItem, ClaimService
+from claim.models import Feedback, ClaimItem, ClaimService,SosysSubProduct
 from django.db.models import Subquery
 from medical.models import Item, Service
 
@@ -7,7 +7,7 @@ from api_fhir.converters import BaseFHIRConverter, CommunicationRequestConverter
 from api_fhir.converters.claimConverter import ClaimConverter
 from api_fhir.exceptions import FHIRRequestProcessException
 from api_fhir.models import ClaimResponse, Money, ClaimResponsePayment, ClaimResponseError, ClaimResponseItem, Claim, \
-    ClaimResponseItemAdjudication, ClaimResponseProcessNote, ClaimResponseAddItem
+    ClaimResponseItemAdjudication, ClaimResponseProcessNote, ClaimResponseAddItem,Extension
 from api_fhir.utils import TimeUtils, FhirUtils
 
 
@@ -16,6 +16,8 @@ class ClaimResponseConverter(BaseFHIRConverter):
     @classmethod
     def to_fhir_obj(cls, imis_claim):
         fhir_claim_response = ClaimResponse()
+        fhir_claim_response.extension = []
+        fhir_claim_response.extension.append(cls.getSchemeInformation(imis_claim.subProduct_id))
         fhir_claim_response.created = TimeUtils.date().isoformat()
         fhir_claim_response.request = ClaimConverter.build_fhir_resource_reference(imis_claim)
         cls.build_fhir_pk(fhir_claim_response, imis_claim.uuid)
@@ -27,6 +29,16 @@ class ClaimResponseConverter(BaseFHIRConverter):
         cls.build_fhir_communication_request_reference(fhir_claim_response, imis_claim)
         cls.build_fhir_items(fhir_claim_response, imis_claim)
         return fhir_claim_response
+
+    def getSchemeInformation(schid):
+        sorex =  list(SosysSubProduct.objects.filter(id = schid))
+        extension = Extension()
+        extension.url = "scheme"
+        if len(sorex) > 0:
+            extension.valueString = sorex[0].sch_name_eng
+        else:
+            extension.valueString = "None"
+        return extension
 
     @classmethod
     def build_fhir_outcome(cls, fhir_claim_response, imis_claim):

@@ -19,8 +19,8 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
     def to_fhir_obj(cls, imis_claim):
         fhir_claim = FHIRClaim()
         claim_uuid= imis_claim.uuid
-        fhir_claim.extension = []
-        fhir_claim.extension.append(cls.getSchemeInformation(imis_claim.scheme_type))
+        # fhir_claim.extension = []
+        fhir_claim.extension.append(cls.getSchemeInformation(imis_claim.subProduct_id))
         cls.build_fhir_pk(fhir_claim, imis_claim.uuid)
         fhir_claim.created = imis_claim.date_claimed.isoformat()
         fhir_claim.facility = LocationConverter.build_fhir_resource_reference(imis_claim.health_facility)
@@ -34,19 +34,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         cls.build_fhir_information(fhir_claim, imis_claim)
         cls.build_fhir_items(fhir_claim, imis_claim)
         return fhir_claim
-
-    def getSchemeInformation(schid):
-        sorex =  list(SosysSubProduct.objects.filter(id = schid))
-        print (len(sorex))
-        # print (schid)
-        # print("********************")
-        extension = Extension()
-        extension.url = "scheme"
-        if len(sorex) > 0:
-            extension.valueString = sorex[0].sch_name_eng
-        else:
-            extension.valueString = "None"
-        return extension
+    
     @classmethod
     def to_imis_obj(cls, fhir_claim, audit_user_id):
         errors = []
@@ -65,7 +53,16 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         cls.build_imis_submit_items_and_services(imis_claim, fhir_claim)
         cls.check_errors(errors)
         return imis_claim
-
+    def getSchemeInformation(schid):
+        sorex =  list(SosysSubProduct.objects.filter(id = schid))
+        extension = Extension()
+        extension.url = "scheme"
+        if len(sorex) > 0:
+            extension.valueString = sorex[0].sch_name_eng
+        else:
+            extension.valueString = "None"
+        return extension
+    
     @classmethod
     def get_reference_obj_id(cls, imis_claim):
         return imis_claim.uuid
@@ -100,9 +97,6 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_claim_code_type())
         if value:
             imis_claim.code = cls.generateCode(value)
-            # imis_claim.code = value
-            # print(value)
-            # print(imis_claim.code)
         cls.valid_condition(imis_claim.code is None, gettext('Missing the claim code'), errors)
 
     def generateCode(claimCodeInitials):
@@ -110,9 +104,8 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
         sql = """\
                 DECLARE @return_value int;
                 EXEC @return_value = [dbo].[uspClaimSequenceNo] @claimcodeinitials = '""" +claimCodeInitials +"""' ;      
-                SELECT	'Return Value' = @return_value;
+                SELECT	'Return Value' = @return_value; 
             """
-        # print(sql)
         with connection.cursor() as cur:
             try:
                 cur.execute(sql)
@@ -128,9 +121,7 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
             for x in fhir_claim.extension:
                 if x.url == "schemeType":
                     value = x.valueString
-        #     print(fhir_claim.extension[0].valueString)
         # value = cls.get_fhir_identifier_by_code(fhir_claim.identifier, Stu3IdentifierConfig.get_fhir_schema_code_type())
-        print(value)
         if value:
             imis_claim.scheme_type = value
         cls.valid_condition(imis_claim.scheme_type is None, gettext('Missing the Schema code'), errors)
@@ -154,7 +145,6 @@ class ClaimConverter(BaseFHIRConverter, ReferenceConverterMixin):
                 currentYear = datetime.datetime.now()
                 code_value= "I"+str(health_facility.code)+str(currentYear.year)[1:]
                 claim_code=cls.generateCode(code_value)
-                print(claim_code)
                 imis_claim.code = claim_code
         cls.valid_condition(imis_claim.health_facility is None, gettext('Missing the facility reference'), errors)
 

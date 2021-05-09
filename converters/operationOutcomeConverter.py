@@ -15,6 +15,7 @@ class OperationOutcomeConverter(BaseFHIRConverter):
 
     @classmethod
     def to_fhir_obj(cls, obj):
+        print(obj)
         result = OperationOutcome()
         if isinstance(obj, HttpResponse):
             result = cls.build_for_http_response(obj)
