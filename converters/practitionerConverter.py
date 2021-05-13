@@ -85,7 +85,10 @@ class PractitionerConverter(BaseFHIRConverter, PersonConverterMixin, ReferenceCo
 
     @classmethod
     def build_fhir_birth_date(cls, fhir_practitioner, imis_claim_admin):
-        fhir_practitioner.birthDate = imis_claim_admin.dob.isoformat()
+        try:
+            fhir_practitioner.birthDate = imis_claim_admin.dob.isoformat()
+        except:
+            fhir_practitioner.birthDate = None
 
     @classmethod
     def build_imis_birth_date(cls, imis_claim_admin, fhir_practitioner):
